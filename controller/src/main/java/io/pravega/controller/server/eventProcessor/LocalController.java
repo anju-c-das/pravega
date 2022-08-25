@@ -22,6 +22,7 @@ import io.pravega.client.control.impl.Controller;
 import io.pravega.client.control.impl.ControllerFailureException;
 import io.pravega.client.control.impl.ModelHelper;
 import io.pravega.client.control.impl.ReaderGroupConfigRejectedException;
+import io.pravega.client.control.impl.CachedPravegaNodeUri;
 import io.pravega.client.segment.impl.Segment;
 import io.pravega.client.stream.InvalidStreamException;
 import io.pravega.client.stream.PingFailedException;

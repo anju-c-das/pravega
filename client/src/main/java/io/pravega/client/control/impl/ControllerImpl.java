@@ -1324,6 +1324,7 @@ public class ControllerImpl implements Controller {
     }
 
     public void updateStaleValueInCache(String segmentName, PravegaNodeUri errNodeUri) {
+        log.info("--Entered UpdateStaleValueInCache---");
         Exceptions.checkNotNullOrEmpty(segmentName, "segmentName");
         Segment segment = Segment.fromScopedName(segmentName);
         long segmentId = segment.getSegmentId();
@@ -1333,6 +1334,7 @@ public class ControllerImpl implements Controller {
         cachedNode.getPravegaNodeUri().thenAccept(cachedNodeUri -> {
             if(cachedNodeUri.getEndpoint().equals(errNodeUri.getEndpoint()) && cachedNodeUri.getPort() == errNodeUri.getPort()) { // TODO: check what if the errored node recovered on same host and port
                 // enforce cache refresh if stale value
+                log.info("--Cached node details : ---"+ cachedNodeUri.getEndpoint() +" :: "+ cachedNodeUri.getPort());
                 log.info(requestId, "--Refreshing the cache value for segment {}", segmentId);
                 endPointCacheMap.put(segment.getSegmentId(), new CachedPravegaNodeUri(new Timer(), getPravegaNodeUri(segmentName)));
             }
@@ -1351,6 +1353,7 @@ public class ControllerImpl implements Controller {
                     endPointCacheMap.remove(segmentId);
                 }
                 LoggerHelpers.traceLeave(log, "updateStaleValueInCache", traceId, requestId);
+                log.info("--Exit UpdateStaleValueInCache---");
             });
     }
 

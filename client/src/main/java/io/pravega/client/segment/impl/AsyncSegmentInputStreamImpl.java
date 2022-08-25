@@ -89,6 +89,7 @@ class AsyncSegmentInputStreamImpl extends AsyncSegmentInputStream {
         public void wrongHost(WireCommands.WrongHost wrongHost) {
             log.info("--Entered WrongHost----");
             PravegaNodeUri errNodeUri = connection.join().getLocation();
+            log.info("--PRAVEGA NODE INFO : WH ---"+ errNodeUri.getEndpoint() +":port "+ errNodeUri.getPort());
             controller.updateStaleValueInCache(wrongHost.getSegment(), errNodeUri);
             closeConnection(new ConnectionFailedException(wrongHost.toString()));
             log.info("--Exit WrongHost----");

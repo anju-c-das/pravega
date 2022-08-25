@@ -18,12 +18,15 @@ package io.pravega.client.segment.impl;
 import io.netty.buffer.Unpooled;
 import io.pravega.auth.AuthenticationException;
 import io.pravega.client.connection.impl.ClientConnection;
+import io.pravega.client.control.impl.CachedPravegaNodeUri;
+import io.pravega.client.control.impl.ControllerImpl;
 import io.pravega.client.security.auth.DelegationTokenProvider;
 import io.pravega.client.security.auth.DelegationTokenProviderFactory;
 import io.pravega.client.stream.impl.ConnectionClosedException;
 import io.pravega.client.stream.mock.MockConnectionFactoryImpl;
 import io.pravega.client.stream.mock.MockController;
 import io.pravega.common.Exceptions;
+import io.pravega.common.Timer;
 import io.pravega.common.concurrent.Futures;
 import io.pravega.shared.protocol.netty.ConnectionFailedException;
 import io.pravega.shared.protocol.netty.PravegaNodeUri;
@@ -408,9 +411,58 @@ public class AsyncSegmentInputStreamTest extends LeakDetectorTestSuite {
         in.getConnection().get();
 
         ReplyProcessor processor = connectionFactory.getProcessor(endpoint);
-        WireCommands.ErrorMessage reply = new WireCommands.ErrorMessage(requestId, segment.getScopedName(), "error.", WireCommands.ErrorMessage.ErrorCode.ILLEGAL_ARGUMENT_EXCEPTION);
+        WireCommands.WrongHost reply = new WireCommands.WrongHost(requestId, segment.getScopedName(), "localhost", "SomeException");
+      //  WireCommands.ErrorMessage reply = new WireCommands.ErrorMessage(requestId, segment.getScopedName(), "error.", WireCommands.ErrorMessage.ErrorCode.ILLEGAL_ARGUMENT_EXCEPTION);
         processor.process(reply);
         verify(c).close();
     }
 
+    @Test
+            //(timeout = 10000)
+    public void testWrongHost() throws ConnectionFailedException, ExecutionException, InterruptedException {
+        String mockClientReplyStackTrace = "SomeException";
+        Segment segment = new Segment("scope", "testRead", 1);
+        PravegaNodeUri endpoint = new PravegaNodeUri("localhost", SERVICE_PORT);
+        @Cleanup
+        MockConnectionFactoryImpl connectionFactory = new MockConnectionFactoryImpl();
+        @Cleanup
+        MockController controller = new MockController(endpoint.getEndpoint(), endpoint.getPort(), connectionFactory, true);
+        Semaphore dataAvailable = new Semaphore(0);
+        @Cleanup
+        AsyncSegmentInputStreamImpl in = new AsyncSegmentInputStreamImpl(controller, connectionFactory, segment,
+                DelegationTokenProviderFactory.createWithEmptyToken(), dataAvailable);
+        ClientConnection c = mock(ClientConnection.class);
+        connectionFactory.provideConnection(endpoint, c);
+
+        //segment truncated response from Segment store.
+        WireCommands.SegmentIsTruncated segmentIsTruncated = new WireCommands.SegmentIsTruncated(in.getRequestId(), segment.getScopedName(), 1234,
+                mockClientReplyStackTrace, 1234L);
+        //Trigger read.
+        CompletableFuture<SegmentRead> readFuture = in.read(1234, 5678);
+        assertEquals(0, dataAvailable.availablePermits());
+        //verify that a response from Segment store completes the readFuture and the future completes with SegmentTruncatedException.
+        AssertExtensions.assertBlocks(() -> assertThrows(SegmentTruncatedException.class, () -> readFuture.get()), () -> {
+            ReplyProcessor processor = connectionFactory.getProcessor(endpoint);
+            processor.process(segmentIsTruncated);
+        });
+
+        System.out.println("****************BEGIN TEST*******************");
+        CompletableFuture<PravegaNodeUri> endpointForSegment;
+        endpointForSegment = controller.getEndpointForSegment("scope1/stream1/0");
+        assertEquals(new PravegaNodeUri("localhost", SERVICE_PORT), endpointForSegment.get());
+        // throw wrongHost and see if the connection closes
+        WireCommands.WrongHost wrongHost = new WireCommands.WrongHost(in.getRequestId(), segment.getScopedName(), "newHost", "SomeException");
+        ReplyProcessor processor = connectionFactory.getProcessor(endpoint);
+        //ControllerImpl test = Mockito.mock(ControllerImpl.class);
+       // when(test.getPravegaNodeUriForTesting(segment.getScopedName())).thenReturn(CompletableFuture.completedFuture(new PravegaNodeUri("newMockedEP", 1)));
+       // when(test.getSegmentEndpointFromCache(segment.getSegmentId())).thenReturn(new CachedPravegaNodeUri(new Timer(), CompletableFuture.completedFuture(new PravegaNodeUri("newMockedEP", 1))));
+        processor.process(wrongHost);
+       // CachedPravegaNodeUri testCP = test.getSegmentEndpointFromCache(segment.getSegmentId());
+     //   System.out.println("Ep--"+testCP.getPravegaNodeUri().join().getEndpoint()+"--PORT--"+testCP.getPravegaNodeUri().join().getPort());
+
+
+        verify(c).close();
+        System.out.println("****************END TEST*******************");
+
+    }
 }

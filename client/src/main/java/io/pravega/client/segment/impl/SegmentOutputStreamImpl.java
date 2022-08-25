@@ -43,6 +43,7 @@ import io.pravega.auth.TokenExpiredException;
 import io.pravega.client.connection.impl.ClientConnection;
 import io.pravega.client.connection.impl.ConnectionPool;
 import io.pravega.client.connection.impl.Flow;
+import io.pravega.client.control.impl.CachedPravegaNodeUri;
 import io.pravega.client.security.auth.DelegationTokenProvider;
 import io.pravega.client.control.impl.Controller;
 import io.pravega.client.stream.impl.PendingEvent;
@@ -69,6 +70,7 @@ import io.pravega.shared.protocol.netty.WireCommands.SetupAppend;
 import io.pravega.shared.protocol.netty.WireCommands.WrongHost;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
+import lombok.SneakyThrows;
 import lombok.ToString;
 import lombok.extern.slf4j.Slf4j;
 
@@ -338,8 +340,11 @@ class SegmentOutputStreamImpl implements SegmentOutputStream {
             failConnection(new ConnectionFailedException("Connection dropped for writer " + writerId));
         }
 
+        @SneakyThrows   // TODO: check on this
         @Override
         public void wrongHost(WrongHost wrongHost) {
+            PravegaNodeUri errNodeUri = getConnection().join().getLocation(); // TODO: check on this
+            controller.updateStaleValueInCache(wrongHost.getSegment(), errNodeUri);
             failConnection(new ConnectionFailedException(wrongHost.toString()));
         }
 

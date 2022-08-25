@@ -97,6 +97,8 @@ import io.pravega.controller.stream.api.grpc.v1.Controller.UpdateSubscriberStatu
 import io.pravega.controller.stream.api.grpc.v1.ControllerServiceGrpc.ControllerServiceImplBase;
 import io.pravega.shared.NameUtils;
 import io.pravega.shared.protocol.netty.PravegaNodeUri;
+import io.pravega.shared.protocol.netty.ReplyProcessor;
+import io.pravega.shared.protocol.netty.WireCommands;
 import io.pravega.shared.security.auth.AccessOperation;
 import io.pravega.shared.security.auth.DefaultCredentials;
 import io.pravega.test.common.AssertExtensions;
@@ -1965,6 +1967,44 @@ public class ControllerImplTest {
         endpointForSegment = controllerClient.getEndpointForSegment("scope1/stream2/0");
         AssertExtensions.assertFutureThrows("Should throw Exception", endpointForSegment, throwable -> true);
     }
+
+    @Test
+    public void sampleTest() throws Exception {
+       /* CompletableFuture<PravegaNodeUri> endpointForSegment;
+        endpointForSegment = controllerClient.getEndpointForSegment("scope1/stream1/0");
+        assertEquals(new PravegaNodeUri("localhost", SERVICE_PORT), endpointForSegment.get());
+
+        CompletableFuture<PravegaNodeUri> endpointForSegment1 = controllerClient.getEndpointForSegment("scope1/stream1/0");
+        System.out.println(endpointForSegment1.get() +"^^^^^^^^^^^^^^^^^^^^^^");*/
+
+    /*    ExecutorService executor = Executors.newFixedThreadPool(5);
+
+        List<Callable<CompletableFuture<PravegaNodeUri>>> callables = Arrays.asList(
+                () -> controllerClient.getEndpointForSegment("scope1/stream1/0"),
+                () -> controllerClient.getEndpointForSegment("scope1/stream2/0"),
+                () -> controllerClient.getEndpointForSegment("scope1/stream3/0"),
+                () -> controllerClient.getEndpointForSegment("scope1/stream4/0"),
+                () -> controllerClient.getEndpointForSegment("scope1/stream5/0"));
+
+        executor.invokeAll(callables)
+                .stream()
+                .map(future -> {
+                    try {
+                        //Thread.sleep(200);
+                        return future.get().join();
+                    }
+                    catch (Exception e) {
+                        throw new IllegalStateException(e);
+                    }
+                })
+                .forEach(System.out::println); */
+
+        // call the getEndPointCode to test
+
+
+    }
+
+
 
     @Test
     public void testIsSegmentValid() throws Exception {

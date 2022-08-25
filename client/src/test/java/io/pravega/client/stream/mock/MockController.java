@@ -22,8 +22,10 @@ import io.pravega.client.admin.KeyValueTableInfo;
 import io.pravega.client.connection.impl.ClientConnection;
 import io.pravega.client.connection.impl.ConnectionPool;
 import io.pravega.client.connection.impl.Flow;
+import io.pravega.client.control.impl.CachedPravegaNodeUri;
 import io.pravega.client.control.impl.CancellableRequest;
 import io.pravega.client.control.impl.Controller;
+import io.pravega.client.control.impl.ControllerImpl;
 import io.pravega.client.segment.impl.Segment;
 import io.pravega.client.stream.ScalingPolicy;
 import io.pravega.client.stream.Stream;
@@ -43,6 +45,7 @@ import io.pravega.client.stream.impl.TxnSegments;
 import io.pravega.client.stream.impl.WriterPosition;
 import io.pravega.client.tables.KeyValueTableConfiguration;
 import io.pravega.client.tables.impl.KeyValueTableSegments;
+import io.pravega.common.Timer;
 import io.pravega.common.concurrent.Futures;
 import io.pravega.common.util.AsyncIterator;
 import io.pravega.shared.NameUtils;
@@ -837,6 +840,15 @@ public class MockController implements Controller {
     @Synchronized
     public CompletableFuture<KeyValueTableSegments> getCurrentSegmentsForKeyValueTable(String scope, String kvtName) {
         return CompletableFuture.completedFuture(getCurrentSegments(new KeyValueTableInfo(scope, kvtName)));
+    }
+
+    //@Override
+    public void updateStaleValueInCache(String segmentName, PravegaNodeUri errNodeUri) {
+    }
+
+    @Override
+    public CachedPravegaNodeUri getSegmentEndpointFromCache(long segmentId) {
+        return new CachedPravegaNodeUri(new Timer(),CompletableFuture.completedFuture(new PravegaNodeUri(endpoint, port)));
     }
 
     //endregion

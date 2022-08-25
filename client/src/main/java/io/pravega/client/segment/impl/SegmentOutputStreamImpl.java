@@ -343,9 +343,12 @@ class SegmentOutputStreamImpl implements SegmentOutputStream {
         @SneakyThrows   // TODO: check on this
         @Override
         public void wrongHost(WrongHost wrongHost) {
-            PravegaNodeUri errNodeUri = getConnection().join().getLocation(); // TODO: check on this
-            controller.updateStaleValueInCache(wrongHost.getSegment(), errNodeUri);
-            failConnection(new ConnectionFailedException(wrongHost.toString()));
+            log.info("*************Entered WrongHost in SOS***************");
+            getConnection().thenAccept(con -> {
+                log.info("^^^^^^^^^^^^PRAVEGA NODE INFO : WH ^^^^^^^^^^^^^"+ con.getLocation().getEndpoint() +":port "+ con.getLocation().getPort());
+                controller.updateStaleValueInCache(wrongHost.getSegment(), con.getLocation());
+            }).thenRunAsync(() -> failConnection(new ConnectionFailedException(wrongHost.toString())));
+            log.info("*************Entered WrongHost in SOS***************");
         }
 
         /**

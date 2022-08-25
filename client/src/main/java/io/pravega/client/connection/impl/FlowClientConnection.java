@@ -73,7 +73,8 @@ public class FlowClientConnection implements ClientConnection {
 
     @Override
     public PravegaNodeUri getLocation() {
-        return null;    // TODO: check on this
+        return new PravegaNodeUri("FlowConnectionEP", 111);    // TODO: check on this
+      //  return null;
     }
 
 }

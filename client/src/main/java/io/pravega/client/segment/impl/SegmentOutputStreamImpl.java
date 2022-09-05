@@ -339,15 +339,15 @@ class SegmentOutputStreamImpl implements SegmentOutputStream {
             failConnection(new ConnectionFailedException("Connection dropped for writer " + writerId));
         }
 
-        @SneakyThrows
         @Override
         public void wrongHost(WrongHost wrongHost) {
             log.info("Received wrongHost {}", wrongHost);
-            log.info("Received wrongHost {} SOSSSSSSSSS", wrongHost);
             ClientConnection conn = state.getConnection();
-            log.info("COnn obj ******", conn);
-            controller.updateStaleValueInCache(wrongHost.getSegment(), conn.getLocation());
-            log.info("******EXIT WH in SOS *********");
+            System.out.println("Conn object ___________"+conn+"--location--"+conn.getLocation());
+            if(controller != null) {
+                System.out.println("in controller ___________");
+                controller.updateStaleValueInCache(wrongHost.getSegment(), conn.getLocation());
+            }
             failConnection(new ConnectionFailedException(wrongHost.toString()));
         }
 

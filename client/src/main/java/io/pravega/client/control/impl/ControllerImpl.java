@@ -1299,6 +1299,7 @@ public class ControllerImpl implements Controller {
 
     @Override
     public CompletableFuture<PravegaNodeUri> getEndpointForSegment(final String qualifiedSegmentName) {
+        log.info("******READING DATA FROM GEPS of ControllerImpl*********");
         Exceptions.checkNotClosed(closed.get(), this);
         Exceptions.checkNotNullOrEmpty(qualifiedSegmentName, "qualifiedSegmentName");
         Segment segment = Segment.fromScopedName(qualifiedSegmentName);

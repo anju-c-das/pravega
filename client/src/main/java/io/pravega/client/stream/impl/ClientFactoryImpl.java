@@ -111,6 +111,7 @@ public final class ClientFactoryImpl extends AbstractClientFactoryImpl implement
     @VisibleForTesting
     public ClientFactoryImpl(String scope, Controller controller, ConnectionFactory connectionFactory) {
         this(scope, controller, new ConnectionPoolImpl(ClientConfig.builder().build(), connectionFactory));
+        log.info("%%%%%%%%Reached clientfactoryImpl%%%%%%%%"+ controller.getClass().getName());
     }
 
     /**

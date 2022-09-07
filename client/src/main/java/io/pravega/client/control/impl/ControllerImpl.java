@@ -259,7 +259,7 @@ public class ControllerImpl implements Controller {
                                 .directExecutor()
                                 .keepAliveTime(DEFAULT_KEEPALIVE_TIME_MINUTES, TimeUnit.MINUTES),
                 config, executor);
-        log.info("Controller client connecting to server at {}", config.getClientConfig().getControllerURI().getAuthority());
+        log.info("Controller client connecting to server at {}@@@@@@@@@@@@@", config.getClientConfig().getControllerURI().getAuthority());
     }
 
     /**
@@ -1331,20 +1331,25 @@ public class ControllerImpl implements Controller {
         final long requestId = requestIdGenerator.get();
         long traceId = LoggerHelpers.traceEnter(log, "updateStaleValueInCache", segmentName, errNodeUri, requestId);
         CachedPravegaNodeUri cachedNode = getSegmentEndpointFromCache(segmentId);
-        cachedNode.getPravegaNodeUri().thenAccept(cachedNodeUri -> {
-            if (cachedNodeUri.getEndpoint().equals(errNodeUri.getEndpoint()) && cachedNodeUri.getPort() == errNodeUri.getPort()) {
-                log.info("******Refreshing stale value in cache for segment *********");
-                // enforce cache refresh in case of stale value
-                log.debug(requestId, "Refreshing stale value in cache for segment {}", segmentId);
-                endPointCacheMap.put(segment.getSegmentId(), new CachedPravegaNodeUri(new Timer(), getPravegaNodeUri(segmentName)));
-            }
-        }).whenComplete((x, e) -> {
-            if (e != null) {
-                log.warn("updateStaleValueInCache failed for segment {}: ", segmentName, e);
-                endPointCacheMap.remove(segmentId);
-            }
-            LoggerHelpers.traceLeave(log, "updateStaleValueInCache", traceId, requestId);
-        });
+        if(cachedNode != null) {
+            cachedNode.getPravegaNodeUri().thenAccept(cachedNodeUri -> {
+                if (cachedNodeUri.getEndpoint().equals(errNodeUri.getEndpoint()) && cachedNodeUri.getPort() == errNodeUri.getPort()) {
+                    log.info("******Refreshing stale value in cache for segment *********");
+                    // enforce cache refresh in case of stale value
+                    log.debug(requestId, "Refreshing stale value in cache for segment {}", segmentId);
+                    endPointCacheMap.put(segment.getSegmentId(), new CachedPravegaNodeUri(new Timer(), getPravegaNodeUri(segmentName)));
+                }
+            }).whenComplete((x, e) -> {
+                if (e != null) {
+                    log.warn("updateStaleValueInCache failed for segment {}: ", segmentName, e);
+                    endPointCacheMap.remove(segmentId);
+                }
+                LoggerHelpers.traceLeave(log, "updateStaleValueInCache", traceId, requestId);
+            });
+        } else {
+            log.info("******Adding as a new val in cache *********");
+            endPointCacheMap.put(segment.getSegmentId(), new CachedPravegaNodeUri(new Timer(), getPravegaNodeUri(segmentName)));
+        }
     }
 
     private CompletableFuture<PravegaNodeUri> getPravegaNodeUri(String qualifiedSegmentName) {

@@ -174,6 +174,7 @@ public final class ClientFactoryImpl extends AbstractClientFactoryImpl implement
         ExecutorService retransmitPool = ExecutorServiceHelpers.getShrinkingExecutor(1, 100,
                 "ScalingRetransmission-" + stream.getScopedName());
         try {
+            log.info("Controller for writer used !!!!!!!!!!!!!!!!!!!:     "+ controller.getClass().getName());
             return new EventStreamWriterImpl<T>(stream, writerId, controller, outFactory, s, config, retransmitPool, connectionPool.getInternalExecutor(), connectionPool);
         } catch (Throwable ex) {
             // Make sure we shut down the pool if we can't use it.

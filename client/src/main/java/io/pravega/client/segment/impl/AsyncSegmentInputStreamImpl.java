@@ -92,7 +92,7 @@ class AsyncSegmentInputStreamImpl extends AsyncSegmentInputStream {
             ClientConnection conn;
             try {
                 conn = connection.get();
-                log.info("**** WH clientConnection class *****"+ connection.getClass().getName());
+                log.info("**** WH clientConnection class *****"+ connection);
                 if (conn != null) {
                     controller.updateStaleValueInCache(wrongHost.getSegment(), conn.getLocation());
                 }

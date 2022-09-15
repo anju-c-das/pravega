@@ -1300,6 +1300,7 @@ public class ControllerImpl implements Controller {
 
     @Override
     public CompletableFuture<PravegaNodeUri> getEndpointForSegment(final String qualifiedSegmentName) {
+        log.info("**** IN GEPS call *****");
         Exceptions.checkNotClosed(closed.get(), this);
         Exceptions.checkNotNullOrEmpty(qualifiedSegmentName, "qualifiedSegmentName");
         Segment segment = Segment.fromScopedName(qualifiedSegmentName);
@@ -1307,20 +1308,24 @@ public class ControllerImpl implements Controller {
         CachedPravegaNodeUri nodeUri = getSegmentEndpointFromCache(segmentId);
         //Read from cache if the segment endpoint already exists and the refresh interval is not expired.
         if (nodeUri != null && nodeUri.getTimer().getElapsedMillis() <= CachedPravegaNodeUri.MAX_BACKOFF_MILLIS) {
-            log.info("Fetching the endpoint details of segment {} from cache", segmentId);
+            log.info("******Fetching the endpoint details of segment {} from cache****", segmentId);
             return nodeUri.getPravegaNodeUri();
         } else if (nodeUri != null && nodeUri.getTimer().getElapsedMillis() > CachedPravegaNodeUri.MAX_BACKOFF_MILLIS) {
             CompletableFuture<PravegaNodeUri> existingNodeInfo = nodeUri.getPravegaNodeUri();
             // Trigger a background call and refresh the cache.
+            log.info("**** WHEN TIMER EXPIRED AND UPDATING CACHE IN bg *****");
             endPointCacheMap.put(segment.getSegmentId(), new CachedPravegaNodeUri(new Timer(), getPravegaNodeUri(qualifiedSegmentName)));
             return existingNodeInfo;
         } else {
+            log.info("**** IN N/W call *****");
             endPointCacheMap.put(segment.getSegmentId(), new CachedPravegaNodeUri(new Timer(), getPravegaNodeUri(qualifiedSegmentName)));
             return endPointCacheMap.get(segment.getSegmentId()).getPravegaNodeUri();
         }
     }
 
     public void updateStaleValueInCache(String segmentName, PravegaNodeUri errNodeUri) {
+        log.info("*********ENTERED updateStaleValueInCache**********");
+        log.info("********* error node details "+errNodeUri.getEndpoint()+" "+errNodeUri.getPort());
         Exceptions.checkNotNullOrEmpty(segmentName, "segmentName");
         Segment segment = Segment.fromScopedName(segmentName);
         long segmentId = segment.getSegmentId();
@@ -1330,7 +1335,8 @@ public class ControllerImpl implements Controller {
         cachedNode.getPravegaNodeUri().thenAccept(cachedNodeUri -> {
             if (cachedNodeUri.getEndpoint().equals(errNodeUri.getEndpoint()) && cachedNodeUri.getPort() == errNodeUri.getPort()) {
                 // enforce cache refresh in case of stale value
-                log.debug(requestId, "Refreshing stale value in cache for segment {}", segmentId);
+                log.info("********* CACHED node details "+cachedNodeUri.getEndpoint()+" "+cachedNodeUri.getPort());
+                log.info(requestId, "Refreshing stale value in cache for segment {}", segmentId);
                 endPointCacheMap.put(segment.getSegmentId(), new CachedPravegaNodeUri(new Timer(), getPravegaNodeUri(segmentName)));
             }
         }).whenComplete((x, e) -> {

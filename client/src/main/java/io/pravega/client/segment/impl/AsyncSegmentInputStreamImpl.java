@@ -88,10 +88,11 @@ class AsyncSegmentInputStreamImpl extends AsyncSegmentInputStream {
         @SneakyThrows
         @Override
         public void wrongHost(WireCommands.WrongHost wrongHost) {
-            log.info("Received wrongHost {}", wrongHost);
+            log.info("*************Received wrongHost {} *************", wrongHost);
             ClientConnection conn;
             try {
                 conn = connection.get();
+                log.info("**** WH clientConnection class *****"+ connection.getClass().getName());
                 if (conn != null) {
                     controller.updateStaleValueInCache(wrongHost.getSegment(), conn.getLocation());
                 }

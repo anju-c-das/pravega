@@ -614,6 +614,7 @@ public class LocalController implements Controller {
 
     @Override
     public CompletableFuture<PravegaNodeUri> getEndpointForSegment(String qualifiedSegmentName) {
+        log.info("**** IN LocalController *****");
         Segment segment = Segment.fromScopedName(qualifiedSegmentName);
             return controller.getURI(ModelHelper.createSegmentId(segment.getScope(), segment.getStreamName(),
                     segment.getSegmentId())).thenApply(ModelHelper::encode);

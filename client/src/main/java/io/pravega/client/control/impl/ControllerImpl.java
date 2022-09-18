@@ -1340,11 +1340,13 @@ public class ControllerImpl implements Controller {
                     endPointCacheMap.put(segment.getSegmentId(), new CachedPravegaNodeUri(new Timer(), getPravegaNodeUri(segmentName)));
                 }
             }).whenComplete((x, e) -> {
+                log.info("^^^^^^^^^^Reached here in whencomplete ^^^^^^^^^^^^^");
                 if (e != null) {
                     log.warn("updateStaleValueInCache failed for segment {}: ", segmentName, e);
                     endPointCacheMap.remove(segmentId);
                 }
                 LoggerHelpers.traceLeave(log, "updateStaleValueInCache", traceId, requestId);
+                log.info("^^^^^^^^^^Exit whencomplete ^^^^^^^^^^^^^");
             });
         }
     }

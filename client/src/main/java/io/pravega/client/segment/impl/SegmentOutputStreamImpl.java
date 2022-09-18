@@ -340,7 +340,15 @@ class SegmentOutputStreamImpl implements SegmentOutputStream {
             if (connection != null) {
                 controller.updateStaleValueInCache(wrongHost.getSegment(), connection.getLocation());
             }
-            failConnection(new ConnectionFailedException(wrongHost.toString()));
+            try {
+                log.info("*******************************************************************************");
+                PravegaNodeUri node = controller.getEndpointForSegment(wrongHost.getSegment()).get();
+                Segment segment = Segment.fromScopedName(wrongHost.getSegment());
+                log.info("Node info for segment  "+ segment.getSegmentId() +"  is "+ node.getEndpoint() +"  port "+ node.getPort());
+                log.info("*******************************************************************************");
+            } catch(Throwable e) {
+                failConnection(new ConnectionFailedException(wrongHost.toString()));
+            }
         }
 
         /**

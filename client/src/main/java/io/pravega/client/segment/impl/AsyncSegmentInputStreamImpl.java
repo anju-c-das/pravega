@@ -96,6 +96,11 @@ class AsyncSegmentInputStreamImpl extends AsyncSegmentInputStream {
                 if (conn != null) {
                     controller.updateStaleValueInCache(wrongHost.getSegment(), conn.getLocation());
                 }
+                log.info("*******************************************************************************");
+                PravegaNodeUri node = controller.getEndpointForSegment(wrongHost.getSegment()).get();
+                Segment segment = Segment.fromScopedName(wrongHost.getSegment());
+                log.info("Node info for segment  "+ segment.getSegmentId() +"  is "+ node.getEndpoint() +"  port "+ node.getPort());
+                log.info("*******************************************************************************");
             } finally {
                 closeConnection(new ConnectionFailedException(wrongHost.toString()));
             }

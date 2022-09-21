@@ -1324,13 +1324,16 @@ public class ControllerImpl implements Controller {
 
     @Override
     public void updateStaleValueInCache(String segmentName, PravegaNodeUri errNodeUri) {
-        log.info("*********ENTERED updateStaleValueInCache**********");
+        log.info("*********ENTERED updateStaleValueInCache   V2.0 **********");
         log.info("********* error node details "+errNodeUri.getEndpoint()+" "+errNodeUri.getPort());
         Exceptions.checkNotNullOrEmpty(segmentName, "segmentName");
         Segment segment = Segment.fromScopedName(segmentName);
         final long requestId = requestIdGenerator.get();
         long traceId = LoggerHelpers.traceEnter(log, "updateStaleValueInCache", segmentName, errNodeUri, requestId);
         CachedPravegaNodeUri cachedNode = getSegmentEndpointFromCache(segment);
+        if(cachedNode == null) {
+            log.info("Cached Node fetching is NULLL *********** ");
+        }
         if (cachedNode != null) {
             log.info("Cached Node fetching status *********** "+ cachedNode.getPravegaNodeUri().isDone());
             cachedNode.getPravegaNodeUri().thenAccept(cachedNodeUri -> {

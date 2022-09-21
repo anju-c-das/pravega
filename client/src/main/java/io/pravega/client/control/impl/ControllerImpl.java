@@ -1332,7 +1332,9 @@ public class ControllerImpl implements Controller {
         long traceId = LoggerHelpers.traceEnter(log, "updateStaleValueInCache", segmentName, errNodeUri, requestId);
         CachedPravegaNodeUri cachedNode = getSegmentEndpointFromCache(segment);
         if (cachedNode != null) {
+            log.info("Cached Node fetching status *********** "+ cachedNode.getPravegaNodeUri().isDone());
             cachedNode.getPravegaNodeUri().thenAccept(cachedNodeUri -> {
+                log.info("Cached Node val *********** "+ cachedNodeUri.getEndpoint() +"----------"+ cachedNodeUri.getPort());
                 if (cachedNodeUri.getEndpoint().equals(errNodeUri.getEndpoint()) && cachedNodeUri.getPort() == errNodeUri.getPort()) {
                     // enforce cache refresh in case of stale value
                     log.info(requestId, "Refreshing stale value in cache for segment {}************", segment.getSegmentId());

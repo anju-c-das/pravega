@@ -242,7 +242,7 @@ public class ControllerImpl implements Controller {
     private final int maxCacheSize = 1000;
 
     @Getter(value = AccessLevel.PACKAGE)
-    private final SimpleCache<Long, CachedPravegaNodeUri> endPointCacheMap;
+    private final SimpleCache<Segment, CachedPravegaNodeUri> endPointCacheMap;
 
 
     /**
@@ -276,7 +276,7 @@ public class ControllerImpl implements Controller {
         this.executor = executor;
         this.retryConfig = createRetryConfig(config);
         this.endPointCacheMap = new SimpleCache<>(maxCacheSize, segmentEntryExpirationTime,
-                (segment, cachedEndPointUri) -> log.info("Evicting segment : {} from cache", segment));
+                (segment, cachedEndPointUri) -> log.info("Evicting segment : {} from cache", segment.getSegmentId()));
 
         if (config.getClientConfig().isEnableTlsToController()) {
             log.debug("Setting up a SSL/TLS channel builder");
@@ -1304,21 +1304,21 @@ public class ControllerImpl implements Controller {
         Exceptions.checkNotClosed(closed.get(), this);
         Exceptions.checkNotNullOrEmpty(qualifiedSegmentName, "qualifiedSegmentName");
         Segment segment = Segment.fromScopedName(qualifiedSegmentName);
-        long segmentId = segment.getSegmentId();
-        CachedPravegaNodeUri nodeUri = getSegmentEndpointFromCache(segmentId);
+        CachedPravegaNodeUri nodeUri = getSegmentEndpointFromCache(segment);
         //Read from cache if the segment endpoint already exists and the refresh interval is not expired.
         if (nodeUri != null && nodeUri.getTimer().getElapsedMillis() <= CachedPravegaNodeUri.MAX_BACKOFF_MILLIS) {
-            log.info("******Fetching the endpoint details of segment {} from cache****", segmentId);
+            log.info("Fetching the endpoint details of segment {} from cache**********", segment.getSegmentId());
             return nodeUri.getPravegaNodeUri();
         } else if (nodeUri != null && nodeUri.getTimer().getElapsedMillis() > CachedPravegaNodeUri.MAX_BACKOFF_MILLIS) {
             // Trigger a background call and refresh the cache.
-            log.info("**** WHEN TIMER EXPIRED AND UPDATING CACHE IN bg *****");
-            endPointCacheMap.put(segment.getSegmentId(), new CachedPravegaNodeUri(new Timer(), getPravegaNodeUri(qualifiedSegmentName)));
+            log.info("Fetching the endpoint details of segment {} from cache in case of expired time****************", segment.getSegmentId());
+            endPointCacheMap.put(segment, new CachedPravegaNodeUri(new Timer(), getPravegaNodeUri(segment)));
             return nodeUri.getPravegaNodeUri();
         } else {
-            log.info("**** IN N/W call *****");
-            endPointCacheMap.put(segment.getSegmentId(), new CachedPravegaNodeUri(new Timer(), getPravegaNodeUri(qualifiedSegmentName)));
-            return endPointCacheMap.get(segment.getSegmentId()).getPravegaNodeUri();
+            log.info("Fetching the endpoint details of segment {} from NETWORK***********", segment.getSegmentId());
+            CompletableFuture<PravegaNodeUri> nodeInfo = getPravegaNodeUri(segment);
+            endPointCacheMap.put(segment, new CachedPravegaNodeUri(new Timer(), nodeInfo));
+            return nodeInfo;
         }
     }
 
@@ -1328,22 +1328,21 @@ public class ControllerImpl implements Controller {
         log.info("********* error node details "+errNodeUri.getEndpoint()+" "+errNodeUri.getPort());
         Exceptions.checkNotNullOrEmpty(segmentName, "segmentName");
         Segment segment = Segment.fromScopedName(segmentName);
-        long segmentId = segment.getSegmentId();
         final long requestId = requestIdGenerator.get();
         long traceId = LoggerHelpers.traceEnter(log, "updateStaleValueInCache", segmentName, errNodeUri, requestId);
-        CachedPravegaNodeUri cachedNode = getSegmentEndpointFromCache(segmentId);
+        CachedPravegaNodeUri cachedNode = getSegmentEndpointFromCache(segment);
         if (cachedNode != null) {
             cachedNode.getPravegaNodeUri().thenAccept(cachedNodeUri -> {
                 if (cachedNodeUri.getEndpoint().equals(errNodeUri.getEndpoint()) && cachedNodeUri.getPort() == errNodeUri.getPort()) {
                     // enforce cache refresh in case of stale value
-                    log.debug(requestId, "Refreshing stale value in cache for segment {}", segmentId);
-                    endPointCacheMap.put(segment.getSegmentId(), new CachedPravegaNodeUri(new Timer(), getPravegaNodeUri(segmentName)));
+                    log.info(requestId, "Refreshing stale value in cache for segment {}************", segment.getSegmentId());
+                    endPointCacheMap.put(segment, new CachedPravegaNodeUri(new Timer(), getPravegaNodeUri(segment)));
                 }
             }).whenComplete((x, e) -> {
                 log.info("^^^^^^^^^^Reached here in whencomplete ^^^^^^^^^^^^^");
                 if (e != null) {
-                    log.warn("updateStaleValueInCache failed for segment {}: ", segmentName, e);
-                    endPointCacheMap.remove(segmentId);
+                    log.info("updateStaleValueInCache failed for segment {}: ", segmentName, e);
+                    endPointCacheMap.remove(segment);
                 }
                 LoggerHelpers.traceLeave(log, "updateStaleValueInCache", traceId, requestId);
                 log.info("^^^^^^^^^^Exit whencomplete ^^^^^^^^^^^^^");
@@ -1351,13 +1350,13 @@ public class ControllerImpl implements Controller {
         }
     }
 
-    private CompletableFuture<PravegaNodeUri> getPravegaNodeUri(String qualifiedSegmentName) {
-        Segment segment = Segment.fromScopedName(qualifiedSegmentName);
+    @VisibleForTesting
+    protected CompletableFuture<PravegaNodeUri> getPravegaNodeUri(Segment segment) {
         final long requestId = requestIdGenerator.get();
-        long traceId = LoggerHelpers.traceEnter(log, "getPravegaNodeUri", qualifiedSegmentName, requestId);
+        long traceId = LoggerHelpers.traceEnter(log, "getPravegaNodeUri", segment.getScopedName(), requestId);
         final CompletableFuture<NodeUri> result = this.retryConfig.runAsync(() -> {
-            RPCAsyncCallback<NodeUri> callback = new RPCAsyncCallback<>(requestId, "getEndpointForSegment",
-                    qualifiedSegmentName);
+            RPCAsyncCallback<NodeUri> callback = new RPCAsyncCallback<>(requestId, "getPravegaNodeUri",
+                    segment);
             // Ensure only the scoped name of the segment is passed, this ensures tracking for transactionsegments.
             new ControllerClientTagger(client, timeoutMillis).withTag(requestId, GET_URI, segment.getScopedName())
                     .getURI(ModelHelper.createSegmentId(segment.getScope(),
@@ -1369,19 +1368,14 @@ public class ControllerImpl implements Controller {
         return result.thenApplyAsync(ModelHelper::encode, this.executor)
                 .whenComplete((x, e) -> {
                     if (e != null) {
-                        log.warn(requestId, "getEndpointForSegment {} failed: ", qualifiedSegmentName, e);
+                        log.info(requestId, "getPravegaNodeUri {} failed: *****************", segment.getScopedName(), e);
                     }
-                    LoggerHelpers.traceLeave(log, "getEndpointForSegment", traceId, requestId);
+                    LoggerHelpers.traceLeave(log, "getPravegaNodeUri", traceId, requestId);
                 });
     }
 
-    @VisibleForTesting
-    public CompletableFuture<PravegaNodeUri> getPravegaNodeUriForTesting(String qualifiedSegmentName) {
-        return getPravegaNodeUri(qualifiedSegmentName);
-    }
-
-    private CachedPravegaNodeUri getSegmentEndpointFromCache(long segmentId) {
-        return endPointCacheMap.get(segmentId);
+    private CachedPravegaNodeUri getSegmentEndpointFromCache(Segment segment) {
+        return endPointCacheMap.get(segment);
     }
 
     @Override

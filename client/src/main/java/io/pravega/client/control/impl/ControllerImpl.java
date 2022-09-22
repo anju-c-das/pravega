@@ -1367,6 +1367,11 @@ public class ControllerImpl implements Controller {
                 });
     }
 
+    @VisibleForTesting
+    public CompletableFuture<PravegaNodeUri> getPravegaNodeUriForTest(Segment segment) {
+        return getPravegaNodeUri(segment);
+    }
+
     private CachedPravegaNodeUri getSegmentEndpointFromCache(Segment segment) {
         return endPointCacheMap.get(segment);
     }

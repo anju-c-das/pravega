@@ -1344,7 +1344,7 @@ public class ControllerImpl implements Controller {
     }
 
     @VisibleForTesting
-    protected CompletableFuture<PravegaNodeUri> getPravegaNodeUri(Segment segment) {
+    public CompletableFuture<PravegaNodeUri> getPravegaNodeUri(Segment segment) {
         final long requestId = requestIdGenerator.get();
         long traceId = LoggerHelpers.traceEnter(log, "getPravegaNodeUri", segment.getScopedName(), requestId);
         final CompletableFuture<NodeUri> result = this.retryConfig.runAsync(() -> {
@@ -1365,11 +1365,6 @@ public class ControllerImpl implements Controller {
                     }
                     LoggerHelpers.traceLeave(log, "getPravegaNodeUri", traceId, requestId);
                 });
-    }
-
-    @VisibleForTesting
-    public CompletableFuture<PravegaNodeUri> getPravegaNodeUriForTest(Segment segment) {
-        return getPravegaNodeUri(segment);
     }
 
     private CachedPravegaNodeUri getSegmentEndpointFromCache(Segment segment) {

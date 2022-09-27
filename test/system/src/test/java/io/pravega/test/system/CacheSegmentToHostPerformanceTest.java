@@ -14,19 +14,31 @@
  * limitations under the License.
  */
 package io.pravega.test.system;
+import io.pravega.client.EventStreamClientFactory;
+import io.pravega.client.admin.ReaderGroupManager;
 import io.pravega.client.connection.impl.ConnectionFactory;
 import io.pravega.client.connection.impl.SocketConnectionFactoryImpl;
 import io.pravega.client.segment.impl.Segment;
+import io.pravega.client.stream.EventStreamWriter;
+import io.pravega.client.stream.EventWriterConfig;
 import io.pravega.client.stream.ScalingPolicy;
 import io.pravega.client.stream.StreamConfiguration;
 import io.pravega.client.control.impl.ControllerImpl;
 import io.pravega.client.control.impl.ControllerImplConfig;
+import io.pravega.client.stream.impl.JavaSerializer;
 import io.pravega.test.system.framework.Environment;
 import io.pravega.test.system.framework.SystemTestRunner;
 import io.pravega.test.system.framework.Utils;
 import io.pravega.test.system.framework.services.Service;
+import io.pravega.client.stream.ReaderGroupConfig;
+import io.pravega.client.stream.Stream;
+import io.pravega.client.stream.EventStreamReader;
+import io.pravega.client.stream.ReaderConfig;
+
+import java.io.Serializable;
 import java.net.URI;
 import java.util.List;
+import java.util.UUID;
 
 import lombok.Cleanup;
 import lombok.extern.slf4j.Slf4j;
@@ -44,6 +56,8 @@ import static org.junit.Assert.assertTrue;
 public class CacheSegmentToHostPerformanceTest extends AbstractReadWriteTest {
     private final static String STREAM_NAME = "testStreamSampleY";
     private final static String STREAM_SCOPE = "testScopeSampleY" + randomAlphanumeric(5);
+    private final static String READER_GROUP = "ExampleReaderGroupY";
+    private final static int NUM_EVENTS = 100;
 
     @Rule
     public Timeout globalTimeout = Timeout.seconds(5 * 60);
@@ -65,11 +79,12 @@ public class CacheSegmentToHostPerformanceTest extends AbstractReadWriteTest {
     }
 
     /**
-     * Invoke the simpleTest, to see the difference in performance for reading
-     * segment endpoint from cache v/s Network.
+     * Invoke the simpleTest, ensure we are able to produce  events.
+     * The test fails incase of exceptions while writing to the stream.
+     *
      */
     @Test
-    public void simpleTest() {
+    public void simpleCacheToSegmentHostMappingTest() {
         Service conService = Utils.createPravegaControllerService(null);
         List<URI> ctlURIs = conService.getServiceDetails();
         URI controllerUri = ctlURIs.get(0);
@@ -86,27 +101,58 @@ public class CacheSegmentToHostPerformanceTest extends AbstractReadWriteTest {
         assertTrue(controller.createScope(STREAM_SCOPE).join());
         assertTrue(controller.createStream(STREAM_SCOPE, STREAM_NAME, config).join());
 
-        long networkReadDuration = testRunDurationForSegmentEndpointRead(controller, "Network");
-        long cacheReadDuration = testRunDurationForSegmentEndpointRead(controller, "Cache");
-        log.info("Time to read data from network is : {} and from Cache is : {}", networkReadDuration, cacheReadDuration);
-        Assert.assertTrue("Test failed to verify the endpoint read duration!", networkReadDuration  > cacheReadDuration );
+        @Cleanup
+        EventStreamClientFactory clientFactory = EventStreamClientFactory.withScope(STREAM_SCOPE, Utils.buildClientConfig(controllerUri));
+        log.info("Invoking Writer test with Controller URI: {}", controllerUri);
 
-    }
+        @Cleanup
+        EventStreamWriter<Serializable> writer = clientFactory.createEventWriter(STREAM_NAME,
+                new JavaSerializer<>(),
+                EventWriterConfig.builder().build());
+        for (int i = 0; i < NUM_EVENTS; i++) {
+            String event = "Publish " + i + "\n";
+            log.debug("Producing event: {} ", event);
+            // any exceptions while writing the event will fail the test.
+            writer.writeEvent("", event);
+            writer.flush();
+        }
 
-    private long testRunDurationForSegmentEndpointRead(ControllerImpl controller, String dataSource) {
+        log.info("Invoking Reader test.");
+        ReaderGroupManager groupManager = ReaderGroupManager.withScope(STREAM_SCOPE, Utils.buildClientConfig(controllerUri));
+        groupManager.createReaderGroup(READER_GROUP, ReaderGroupConfig.builder().stream(Stream.of(STREAM_SCOPE, STREAM_NAME)).build());
+        @Cleanup
+        EventStreamReader<String> reader = clientFactory.createReader(UUID.randomUUID().toString(),
+                READER_GROUP,
+                new JavaSerializer<>(),
+                ReaderConfig.builder().build());
+
+        log.info("***************BEGIN TEST *****************");
+
         Segment segment = new Segment(STREAM_SCOPE, STREAM_NAME, 0);
         long start = System.currentTimeMillis();
         for (int i = 0; i < 500; i++) {
             try {
-                if (dataSource.equalsIgnoreCase("Network")) {
                     controller.getPravegaNodeUri(segment);
-                } else {
-                    controller.getEndpointForSegment(segment.getScopedName());
-                }
             } catch (Exception e) {
-                log.info("Exception while getting segment end point data read");
+                log.info("Exception while getting segment end point data read from Network *****************");
             }
         }
-        return System.currentTimeMillis() - start;
+        long elapsedNetwork = System.currentTimeMillis() - start;
+
+        log.info("***************NETWORK READ TIME *****************" + elapsedNetwork);
+
+        Segment segment1 = new Segment(STREAM_SCOPE, "testStreamSamplez", 1);
+        long start1 = System.currentTimeMillis();
+        for (int i = 0; i < 500; i++) {
+            try {
+                controller.getEndpointForSegment(segment1.getScopedName());
+            } catch (Exception e) {
+                log.info("Exception while getting segment end point data read from CACHE *****************");
+            }
+        }
+        long elapsedCache = System.currentTimeMillis() - start1;
+        log.info("***************CACHE READ TIME *****************" + elapsedCache);
+
+        Assert.assertTrue("Test failed to verify the endpoint read duration!!!!!!!!!!!!", elapsedNetwork  > elapsedCache );
     }
 }

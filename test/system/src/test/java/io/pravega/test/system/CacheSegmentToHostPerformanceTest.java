@@ -54,9 +54,9 @@ import static org.junit.Assert.assertTrue;
 @Slf4j
 @RunWith(SystemTestRunner.class)
 public class CacheSegmentToHostPerformanceTest extends AbstractReadWriteTest {
-    private final static String STREAM_NAME = "testStreamSampleY";
-    private final static String STREAM_SCOPE = "testScopeSampleY" + randomAlphanumeric(5);
-    private final static String READER_GROUP = "ExampleReaderGroupY";
+    private final static String STREAM_NAME = "testStreamSampleA";
+    private final static String STREAM_SCOPE = "testScopeSampleA" + randomAlphanumeric(5);
+    private final static String READER_GROUP = "ExampleReaderGroupA";
     private final static int NUM_EVENTS = 100;
 
     @Rule
@@ -128,7 +128,7 @@ public class CacheSegmentToHostPerformanceTest extends AbstractReadWriteTest {
 
         log.info("***************BEGIN TEST *****************");
 
-        Segment segment = new Segment(STREAM_SCOPE, STREAM_NAME, 0);
+        Segment segment = new Segment(STREAM_SCOPE, "testStreamSampleB", 3);
         long start = System.currentTimeMillis();
         for (int i = 0; i < 500; i++) {
             try {
@@ -141,7 +141,7 @@ public class CacheSegmentToHostPerformanceTest extends AbstractReadWriteTest {
 
         log.info("***************NETWORK READ TIME *****************" + elapsedNetwork);
 
-        Segment segment1 = new Segment(STREAM_SCOPE, "testStreamSamplez", 1);
+        Segment segment1 = new Segment(STREAM_SCOPE, "testStreamSampleC", 4);
         long start1 = System.currentTimeMillis();
         for (int i = 0; i < 500; i++) {
             try {

@@ -54,18 +54,24 @@ public class Orderer {
      */
     @VisibleForTesting
     public <T extends EventSegmentReader> T nextSegment(List<T> segments) {
+        log.info("ANJU: In nextSegment() of Orderer");
         if (segments.isEmpty()) {
+            log.info("Anju: segment is Empty in nextSegment call hence returning null");
             return null;
         }
+        log.info("Anju: segments size {} ", segments.size());
         for (int i = 0; i < segments.size(); i++) {
             T inputStream = segments.get(MathHelpers.abs(counter.incrementAndGet()) % segments.size());
             if (inputStream.isSegmentReady()) {
                 log.trace("Selecting segment: {}", inputStream.getSegmentId());
+                log.info("Anju: inputstream returned {} ", inputStream.getSegmentId().toString());
                 return inputStream;
             } else {
+                log.info("Anju: call to fill buffer invoked");
                 inputStream.fillBuffer();
             }
         }
+        log.info("Anju: returning null from nextSegment after fillingBuffer");
         return null;
     }
 }

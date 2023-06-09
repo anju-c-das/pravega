@@ -84,13 +84,16 @@ public class StateSynchronizerImpl<StateT extends Revisioned>
     public void fetchUpdates() {
         Revision revision = getRevisionToReadFrom(true);
         log.trace("Fetching updates after {} ", revision);
+        log.info("Anju: Fetching updates after {} ", revision);
         try {
             val iter = client.readFrom(revision);
             while (iter.hasNext()) {
                 Entry<Revision, UpdateOrInit<StateT>> entry = iter.next();
                 log.trace("Found entry {} ", entry.getValue());
+                log.info("Anju: Found entry {} ", entry.getValue());
                 if (entry.getValue().isInit()) {
                     InitialUpdate<StateT> init = entry.getValue().getInit();
+                    log.info("Anju: updating current state for {} ", segment.getScopedStreamName());
                     updateCurrentState(init.create(segment.getScopedStreamName(), entry.getKey()));
                 } else {
                     applyUpdates(entry.getKey().asImpl(), entry.getValue().getUpdates());
@@ -262,6 +265,7 @@ public class StateSynchronizerImpl<StateT extends Revisioned>
     private void updateCurrentState(StateT newValue) {
         if (newValue != null && isNewer(newValue.getRevision())) {
             log.trace("Updating new state to {} ", newValue.getRevision());
+            log.info("Anju: Updating new state to {} ", newValue.getRevision());
             currentState = newValue;
         }
     }

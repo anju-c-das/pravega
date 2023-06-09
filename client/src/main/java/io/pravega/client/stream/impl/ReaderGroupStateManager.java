@@ -354,6 +354,7 @@ public class ReaderGroupStateManager {
     }
 
     private void fetchUpdatesIfNeeded() {
+        log.info("ANJU: In fetchUpdatesIfNeeded() of ReaderGroupStateManager");
         if (!fetchStateTimer.hasRemaining()) {
             log.debug("Update group state for reader {}", readerId);
             sync.fetchUpdates();
@@ -364,6 +365,7 @@ public class ReaderGroupStateManager {
 
     void updateConfigIfNeeded() {
         if (!updateConfigTimer.hasRemaining()) {
+            log.info("ANJU: In updateConfigIfNeeded() of ReaderGroupStateManager");
             fetchUpdatesIfNeeded();
             ReaderGroupState state = sync.getState();
             if (state.isUpdatingConfig()) {
@@ -384,6 +386,7 @@ public class ReaderGroupStateManager {
         //Make sure it has been a while, and compaction are staggered.
         if (sync.bytesWrittenSinceCompaction() > MIN_BYTES_BETWEEN_COMPACTIONS && Math.random() < COMPACTION_PROBABILITY) {
             log.debug("Compacting reader group state {}", sync.getState());
+            log.debug("Anju: Compacting reader group state {}", sync.getState());
             sync.compact(ReaderGroupState.CompactReaderGroupState::new);
         }
     }

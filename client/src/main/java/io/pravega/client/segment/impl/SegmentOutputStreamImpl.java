@@ -399,7 +399,7 @@ class SegmentOutputStreamImpl implements SegmentOutputStream {
 
         @Override
         public void appendSetup(AppendSetup appendSetup) {
-            log.info("Received appendSetup {}", appendSetup);
+            log.info("Anju: Received appendSetup {}", appendSetup);
             long ackLevel = appendSetup.getLastEventNumber();
             ackUpTo(ackLevel);
             List<Append> toRetransmit = state.getAllInflight()
@@ -472,6 +472,7 @@ class SegmentOutputStreamImpl implements SegmentOutputStream {
 
         @Override
         public void processingFailure(Exception error) {
+            log.info("Anju: Failing the connection ");
             failConnection(error);
         }
 

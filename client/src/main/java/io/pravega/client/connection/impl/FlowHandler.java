@@ -132,6 +132,7 @@ public class FlowHandler extends FailingReplyProcessor implements AutoCloseable 
      * Set the Recent Message flag. This is used to avoid sending redundant KeepAlives over the connection.
      */
     void setRecentMessage() {
+        log.info("Anju: set the recent message as true");
         recentMessage.set(true);
     }
 
@@ -144,6 +145,7 @@ public class FlowHandler extends FailingReplyProcessor implements AutoCloseable 
         if (cmd instanceof WireCommands.Hello) {
             flowIdReplyProcessorMap.forEach((flowId, rp) -> {
                 try {
+                    log.info("processing reply for hello {}", flowId);
                     rp.hello((WireCommands.Hello) cmd);
                 } catch (Exception e) {
                     // Suppressing exception which prevents all ReplyProcessor.hello from being invoked.
@@ -156,6 +158,7 @@ public class FlowHandler extends FailingReplyProcessor implements AutoCloseable 
         if (cmd instanceof WireCommands.KeepAlive) {
             // The SegmentStore responds to a KeepAlive WireCommand, this ensures the client can detect unresponsive
             // SegmentStores due to network glitches. No action is required for the client on receiving this WireCommand.
+            log.info("Anju: processing Keepalive wire command");
             return;
         }
 
@@ -163,6 +166,7 @@ public class FlowHandler extends FailingReplyProcessor implements AutoCloseable 
         ReplyProcessor processor = getReplyProcessor(cmd);
         if (processor != null) {
             try {
+                log.info("Anju: processing the command in flowhandler {} ", processor.toString());
                 processor.process(cmd);
             } catch (Exception e) {
                 log.warn("ReplyProcessor.process failed for reply {} due to {}", cmd, e.getMessage());
@@ -170,6 +174,7 @@ public class FlowHandler extends FailingReplyProcessor implements AutoCloseable 
             }
         } else {
             if (cmd instanceof WireCommands.ReleasableCommand) {
+                log.info("Anju: wirecommand part of ReleasableCommand");
                 ((WireCommands.ReleasableCommand) cmd).release();
             }
         }

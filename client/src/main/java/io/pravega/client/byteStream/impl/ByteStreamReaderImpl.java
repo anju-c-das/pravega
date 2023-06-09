@@ -144,6 +144,7 @@ public class ByteStreamReaderImpl extends ByteStreamReader {
     @Override
     public CompletableFuture<Integer> onDataAvailable() {
         Exceptions.checkNotClosed(closed.get(), this);
+        System.out.println("Fill Buffer invoked from ByteStreamReaderImpl.onDataAvailable() ");
         return input.fillBuffer().thenApply(v -> available());
     }
 

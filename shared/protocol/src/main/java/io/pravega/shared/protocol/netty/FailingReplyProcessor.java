@@ -204,6 +204,7 @@ public abstract class FailingReplyProcessor implements ReplyProcessor {
     @Override
     public void keepAlive(KeepAlive keepAlive) {
         log.trace("KeepAlive received");
+        log.info("Anju: KeepAlive received");
     }
 
     @Override

@@ -128,6 +128,8 @@ class EventSegmentReaderImpl implements EventSegmentReader {
         if (in.read(result, PARTIAL_DATA_TIMEOUT) == 0 && result.limit() != 0) {
             log.warn("Timeout while trying to read Event data from segment {} at offset {}. The buffer capacity is {} bytes and the data read so far is {} bytes",
                     in.getSegmentId(), in.getOffset(), result.limit(), result.position());
+            log.info("Anju: Timeout while trying to read Event data from segment {} at offset {}. The buffer capacity is {} bytes and the data read so far is {} bytes",
+                    in.getSegmentId(), in.getOffset(), result.limit(), result.position());
             throw new TimeoutException("Timeout while trying to read event data");
         }
     }
@@ -135,6 +137,7 @@ class EventSegmentReaderImpl implements EventSegmentReader {
     @Override
     @Synchronized
     public CompletableFuture<?> fillBuffer() {
+        log.info("ANJU: In FillBuffer() of EventSegmentReaderimpl");
         return in.fillBuffer();
     }
     

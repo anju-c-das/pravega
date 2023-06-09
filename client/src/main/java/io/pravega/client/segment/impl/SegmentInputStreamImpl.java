@@ -75,6 +75,7 @@ class SegmentInputStreamImpl implements SegmentInputStream {
         // Reads should not be so large they cannot fit into the buffer.
         this.minReadLength = Math.min(DEFAULT_READ_LENGTH, bufferSize);
         this.buffer = new CircularBuffer(bufferSize);
+        System.out.println("Anju: call to issueRequestIfNeeded invoked from SegmentInputStreamImpl");
         issueRequestIfNeeded();
     }
 
@@ -116,6 +117,7 @@ class SegmentInputStreamImpl implements SegmentInputStream {
             throw new EndOfSegmentException(END_OFFSET_REACHED);
         }
         if (outstandingRequest == null) {
+            System.out.println("Fill Buffer invoked from SegmentInputStreamImpl.read() ");
             fillBuffer();
         }
         if (receivedTruncated) {
@@ -164,6 +166,7 @@ class SegmentInputStreamImpl implements SegmentInputStream {
         if (segmentRead.getData().readableBytes() == 0) {
             segmentRead.release();
             outstandingRequest = null;
+            log.info("Anju: call to issueRequestIfNeeded invoked from handleRequest");
             issueRequestIfNeeded();
         }
     }
@@ -181,14 +184,17 @@ class SegmentInputStreamImpl implements SegmentInputStream {
      *  - if we have not read up to the configured endOffset.
      */
     private void issueRequestIfNeeded() {
+        log.info("ANJU: In issueRequestIfNeeded() of SegmentInputStreamImpl");
         //compute read length based on current offset up to which the events are read.
         int updatedReadLength = computeReadLength(offset + buffer.dataAvailable());
+        log.info("Anju: update read length {}", updatedReadLength);
         if (!receivedEndOfSegment && !receivedTruncated && updatedReadLength > 0 && outstandingRequest == null) {
             if (log.isTraceEnabled()) {
                 log.trace("Issuing read request for segment {} of {} bytes", getSegmentId(), updatedReadLength);
             }
             CompletableFuture<SegmentRead> r = asyncInput.read(offset + buffer.dataAvailable(), updatedReadLength);
             outstandingRequest = Futures.cancellableFuture(r, SegmentRead::release);
+            log.info("Anju: outstanding req ", outstandingRequest);
         }
     }
 
@@ -240,16 +246,21 @@ class SegmentInputStreamImpl implements SegmentInputStream {
     @Synchronized
     public CompletableFuture<?> fillBuffer() {
         log.trace("Filling buffer {}", this);
+        log.info("ANJU: In FillBuffer() of SegmentInputStreamImpl");
         Exceptions.checkNotClosed(asyncInput.isClosed(), this);
         try {
+            log.info("ANJU: In try block");
             issueRequestIfNeeded();
             while (dataWaitingToGoInBuffer()) {
+                log.info("Anju: data waiting to go in buffer ");
                 handleRequest();
             }
         } catch (SegmentTruncatedException e) {
+            log.info("Anju: Segment truncated exception");
             log.warn("Encountered exception filling buffer", e);
             return CompletableFuture.completedFuture(null);
         }
+        log.info("Anju: outstanding request"+ outstandingRequest);
         return outstandingRequest == null ? CompletableFuture.completedFuture(null) : outstandingRequest;
     }
     

@@ -1129,13 +1129,15 @@ public class ControllerImpl implements Controller {
         }, this.executor);
         return result.thenApplyAsync(segments -> {
             log.debug(requestId, "Received the following data from the controller {}", segments.getSegmentsList());
+            log.info(requestId, "Anju: Received the following data from the controller {}", segments.getSegmentsList());
             return segments.getSegmentsList()
                            .stream()
                            .collect(Collectors.toMap(location -> encode(location.getSegmentId()),
                                    SegmentsAtTime.SegmentLocation::getOffset));
         }, this.executor).whenComplete((x, e) -> {
             if (e != null) {
-                log.warn(requestId, "get Segments of {} at time {} failed: ", stream.getStreamName(), timestamp,  e);
+                //log.warn(requestId, "get Segments of {} at time {} failed: ", stream.getStreamName(), timestamp,  e);
+                log.warn(requestId, "Anju: get Segments of {} at time {} failed: ", stream.getStreamName(), timestamp,  e);
             }
             LoggerHelpers.traceLeave(log, "getSegmentsAtTime", traceId);
         });

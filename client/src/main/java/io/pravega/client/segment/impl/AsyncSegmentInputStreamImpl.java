@@ -73,8 +73,11 @@ class AsyncSegmentInputStreamImpl extends AsyncSegmentInputStream {
 
         @Override
         public void process(Reply reply) {
+            log.info("Anju: in process() of AsyncSegmentInputStreamImpl");
             super.process(reply);
             if (replyAvailable != null) {
+                log.info("Anju: reply available :: "+ replyAvailable.availablePermits());
+                log.info("Anju: Releasing the semaphore as the reply is available");
                 replyAvailable.release();
             }
         }
@@ -131,9 +134,11 @@ class AsyncSegmentInputStreamImpl extends AsyncSegmentInputStream {
 
         @Override
         public void segmentRead(WireCommands.SegmentRead segmentRead) {
+            log.info("Anju: in SegmentRead() of AsyncSegmentInputStreamImpl");
             log.trace("Received read result {}", segmentRead);
             CompletableFuture<SegmentRead> future = grabFuture(segmentRead.getSegment(), segmentRead.getOffset());
             if (future != null) {
+                log.info("Anju: completing the future {} , in AsyncSegmentInputStreamImpl "+ segmentRead);
                 future.complete(segmentRead);
             }
         }
@@ -141,6 +146,7 @@ class AsyncSegmentInputStreamImpl extends AsyncSegmentInputStream {
         private CompletableFuture<SegmentRead> grabFuture(String segment, long offset) {
             checkSegment(segment);
             synchronized (lock) {
+                log.info("Anju: Removing offset {} from outStandingRequests map in AsyncsegmentInputStreamImpl", offset);
                 return outstandingRequests.remove(offset);
             }
         }
@@ -148,6 +154,7 @@ class AsyncSegmentInputStreamImpl extends AsyncSegmentInputStream {
         @Override
         public void processingFailure(Exception error) {
             log.warn("Processing failure on segment {}", segmentId, error);
+            log.warn("Anju: Processing failure on segment {} in AsyncsegmentInputStreamImpl", segmentId, error);
             closeConnection(error);
         }
 
@@ -163,6 +170,7 @@ class AsyncSegmentInputStreamImpl extends AsyncSegmentInputStream {
         }
 
         private void checkSegment(String segment) {
+            log.info("Anju: in checkSegment() of AsyncSegmentInputStreamImpl");
             Preconditions.checkState(segmentId.getScopedName().equals(segment),
                     "Operating on segmentId {} but received sealed for segment {}",
                     segmentId,
@@ -298,6 +306,7 @@ class AsyncSegmentInputStreamImpl extends AsyncSegmentInputStream {
 
     private void failAllInflight(Exception e) {
         log.info("Connection failed due to a {}. Read requests for segment {} will be retransmitted.", e.toString(), segmentId);
+        System.out.println("Anju: Connection failed due to a {}."+  e.toString()+ " Read requests for segment {} will be retransmitted." + segmentId);
         List<CompletableFuture<WireCommands.SegmentRead>> readsToFail;
         synchronized (lock) {
             readsToFail = new ArrayList<>(outstandingRequests.values());

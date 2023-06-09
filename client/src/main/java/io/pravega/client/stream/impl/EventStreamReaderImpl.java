@@ -50,6 +50,7 @@ import io.pravega.shared.security.auth.AccessOperation;
 import io.pravega.common.util.CopyOnWriteHashMap;
 import io.pravega.shared.protocol.netty.WireCommands;
 import java.nio.ByteBuffer;
+import java.time.Duration;
 import java.util.AbstractMap.SimpleEntry;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -71,7 +72,8 @@ import static io.pravega.client.segment.impl.EndOfSegmentException.ErrorType.END
 public final class EventStreamReaderImpl<Type> implements EventStreamReader<Type> {
 
     // Base waiting time for a reader on an idle segment waiting for new data to be read.
-    private static final long BASE_READER_WAITING_TIME_MS = ReaderGroupStateManager.TIME_UNIT.toMillis();
+    private static final long BASE_READER_WAITING_TIME_MS = Duration.ofMillis(Integer.MAX_VALUE).toMillis();
+            //ReaderGroupStateManager.TIME_UNIT.toMillis();
     // As an optimization to avoid creating a new ownedSegments map per event read, we define a base map of segments and
     // then a batch of updates to the offsets of these segments, one per event read. Internally, the Position object can
     // derive the right offsets at which the event was read by lazily replying such updates up to the point it was read.
@@ -126,11 +128,14 @@ public final class EventStreamReaderImpl<Type> implements EventStreamReader<Type
 
     @Override
     public EventRead<Type> readNextEvent(long timeoutMillis) throws ReinitializationRequiredException, TruncatedDataException {
+        log.info("ANJU: In readNextEvent() of EventStreamReaderImpl");
         synchronized (readers) {
             Preconditions.checkState(!closed, "Reader is closed");
             try {
+                log.info("Anju: readNextEventInternal invoked...");
                 return readNextEventInternal(timeoutMillis);
             } catch (ReaderNotInReaderGroupException e) {
+                log.info("Anju: exception in readNextEvent");
                 close();
                 throw new ReinitializationRequiredException(e);
             }
@@ -138,6 +143,7 @@ public final class EventStreamReaderImpl<Type> implements EventStreamReader<Type
     }
     
     private EventRead<Type> readNextEventInternal(long timeoutMillis) throws ReaderNotInReaderGroupException, TruncatedDataException {
+        log.info("ANJU: In readNextEvent() of EventStreamReaderImpl");
         long firstByteTimeoutMillis = Math.min(timeoutMillis, BASE_READER_WAITING_TIME_MS);
         Timer timer = new Timer();
         Segment segment = null;
@@ -145,11 +151,13 @@ public final class EventStreamReaderImpl<Type> implements EventStreamReader<Type
         ByteBuffer buffer = null;
         do {
             String checkpoint = updateGroupStateIfNeeded();
+            log.info("Anju: checkpoint :: "+ checkpoint);
             if (checkpoint != null) {
                 // return checkpoint event to user
+                System.out.println("Anju: checkpoint present, now creating empty event");
                 return createEmptyEvent(checkpoint);
             }
-
+            System.out.println("Anju: List of eventsegmentreader passed is "+ readers);
             EventSegmentReader segmentReader = orderer.nextSegment(readers);
             if (segmentReader == null) {
                 if (groupState.reachedEndOfStream()) {
@@ -157,6 +165,7 @@ public final class EventStreamReaderImpl<Type> implements EventStreamReader<Type
                     return createEmptyEventEndOfStream();
                 }
                 blockFor(firstByteTimeoutMillis);
+                log.info("Anju: draining permits for semaphore segmentsWithData {} ", segmentsWithData);
                 segmentsWithData.drainPermits();
                 buffer = null;
             } else {
@@ -164,11 +173,14 @@ public final class EventStreamReaderImpl<Type> implements EventStreamReader<Type
                 offset = segmentReader.getOffset();
                 try {
                     buffer = segmentReader.read(firstByteTimeoutMillis);
+                    log.info("Anju: Buffer : {}", buffer.toString());
                 } catch (EndOfSegmentException e) {
+                    log.info("Anju: segment was sealed/end of segment reached");
                     boolean isSegmentSealed = e.getErrorType().equals(END_OF_SEGMENT_REACHED);
                     handleEndOfSegment(segmentReader, isSegmentSealed);
                     buffer = null;
                 } catch (SegmentTruncatedException e) {
+                    log.info("Anju: segment was truncated");
                     handleSegmentTruncated(segmentReader);
                     buffer = null;
                 } finally {
@@ -178,7 +190,7 @@ public final class EventStreamReaderImpl<Type> implements EventStreamReader<Type
                 }
             }
         } while (buffer == null && timer.getElapsedMillis() < timeoutMillis);
-
+        log.info("Anju: The reader ID is :: {}", groupState.getReaderId());
         if (buffer == null) {
             log.debug("Empty event returned for reader {} ", groupState.getReaderId());
             return createEmptyEvent(null);
@@ -274,6 +286,7 @@ public final class EventStreamReaderImpl<Type> implements EventStreamReader<Type
      */
     @GuardedBy("readers")
     private String updateGroupStateIfNeeded() throws ReaderNotInReaderGroupException {
+        log.info("ANJU: In updateGroupStateIfNeeded() of EventStreamReaderImpl");
         groupState.updateConfigIfNeeded();
         PositionInternal position = null;
         if (atCheckpoint != null) {
@@ -319,6 +332,7 @@ public final class EventStreamReaderImpl<Type> implements EventStreamReader<Type
      */
     @GuardedBy("readers")
     private void releaseSegmentsIfNeeded(PositionInternal position) throws ReaderNotInReaderGroupException {
+        log.info("Anju: Releasing sealed segments");
         releaseSealedSegments();
         Segment segment = groupState.findSegmentToReleaseIfRequired();
         if (segment != null) {
@@ -421,6 +435,7 @@ public final class EventStreamReaderImpl<Type> implements EventStreamReader<Type
 
     @Override
     public void close() {
+        log.info("Anju: close at refresh and get position");
         closeAt(refreshAndGetPosition());
         for (WatermarkReaderImpl reader : waterMarkReaders.values()) {
             reader.close();

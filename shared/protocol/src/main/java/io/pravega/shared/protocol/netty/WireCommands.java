@@ -978,6 +978,7 @@ public final class WireCommands {
 
         @Override
         public void process(ReplyProcessor cp) {
+            System.out.println("Anju: replyprocessor cp "+ cp.toString());
             cp.segmentRead(this);
         }
 
@@ -1846,6 +1847,7 @@ public final class WireCommands {
 
         @Override
         public void process(ReplyProcessor cp) {
+            System.out.println("Anju: processing keepalive wirecommand reply");
             cp.keepAlive(this);
         }
 

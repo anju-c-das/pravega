@@ -194,7 +194,7 @@ class SegmentInputStreamImpl implements SegmentInputStream {
             }
             CompletableFuture<SegmentRead> r = asyncInput.read(offset + buffer.dataAvailable(), updatedReadLength);
             outstandingRequest = Futures.cancellableFuture(r, SegmentRead::release);
-            log.info("Anju: outstanding req ", outstandingRequest);
+            log.info("Anju: outstanding req ", outstandingRequest.toString());
         }
     }
 
@@ -260,7 +260,7 @@ class SegmentInputStreamImpl implements SegmentInputStream {
             log.warn("Encountered exception filling buffer", e);
             return CompletableFuture.completedFuture(null);
         }
-        log.info("Anju: outstanding request"+ outstandingRequest);
+        log.info("Anju: outstanding request--toString : : "+ outstandingRequest.toString());
         return outstandingRequest == null ? CompletableFuture.completedFuture(null) : outstandingRequest;
     }
     

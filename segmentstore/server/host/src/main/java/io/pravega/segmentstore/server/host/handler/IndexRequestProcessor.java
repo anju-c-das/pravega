@@ -15,6 +15,7 @@
  */
 package io.pravega.segmentstore.server.host.handler;
 
+import io.pravega.common.util.BufferView;
 import io.pravega.common.util.SortUtils;
 import io.pravega.segmentstore.contracts.ReadResult;
 import io.pravega.segmentstore.contracts.ReadResultEntry;
@@ -24,7 +25,9 @@ import io.pravega.shared.NameUtils;
 import java.time.Duration;
 import java.util.AbstractMap;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -96,16 +99,24 @@ public final class IndexRequestProcessor {
             switch (firstElement.getType()) {
                 case Cache: // fallthrough
                 case Storage:
-                    firstElement.requestContent(TIMEOUT);
-                    AtomicReference<IndexEntry> entry = new AtomicReference<>();
+                    try {
+                        /*BufferView bv = firstElement.getContent().get(1, TimeUnit.MINUTES);*/
+                        BufferView content = firstElement.getContent().get(1, TimeUnit.MINUTES);
+                        IndexEntry entry = IndexEntry.fromBytes(content);
+                        return entry.getOffset();
+                    } catch (InterruptedException | RuntimeException | TimeoutException | ExecutionException e) {
+                        log.info(String.format("Unable to read data from index segment %s of type %s.", indexSegmentName, firstElement.getType()));
+                        throw new RuntimeException(e);
+                    }
+                    /*AtomicReference<IndexEntry> entry = new AtomicReference<>();
                     firstElement.getContent().thenAccept(content -> {
                         entry.set(IndexEntry.fromBytes(content));
-                    });
-                    if (entry.get() != null) {
+                    });*/
+                    /*if (entry.get() != null) {
                         return entry.get().getOffset();
                     } else {
-                        throw new IllegalStateException(String.format("Unable to read data from index segment {} of type {}.", segment, firstElement.getType()));
-                    }
+                        throw new IllegalStateException(String.format("Unable to read data from index segment %s of type %s.", indexSegmentName , firstElement.getType()));
+                    }*/
                 case Truncated:
                     throw new SegmentTruncatedException(String.format("Segment %s has been truncated.", segment));
                 case Future:

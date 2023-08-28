@@ -34,6 +34,11 @@ import lombok.extern.slf4j.Slf4j;
 public final class IndexRequestProcessor {
     private static final Duration TIMEOUT = Duration.ofMinutes(1);
 
+    private static final int RETRY_MAX_DELAY_MS = 1000;
+    private static final int RETRY_INITIAL_DELAY_MS = 100;
+    private static final int RETRY_MULTIPLIER = 10;
+    private static final int RETRY_COUNT = 5;
+
     static final class SegmentTruncatedException extends RuntimeException {
         private static final long serialVersionUID = 1L;
 

@@ -90,6 +90,7 @@ public final class IndexRequestProcessor {
         long endIdx = properties.getLength() / NameUtils.INDEX_APPEND_EVENT_SIZE;
         //If startIdx and endIdx are same, then pass length of segment as a result.
         if (startIdx == endIdx) {
+            log.info("No data to read from index segment: {}, startIndex: {}, endIndex: {}", indexSegmentName, startIdx, endIdx);
            return getSegmentLength(store, segment, startIdx);
         }
 

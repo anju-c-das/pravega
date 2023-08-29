@@ -15,6 +15,8 @@
  */
 package io.pravega.segmentstore.server.host.handler;
 
+import io.pravega.common.concurrent.Futures;
+import io.pravega.common.util.BufferView;
 import io.pravega.common.util.Retry;
 import io.pravega.common.util.SortUtils;
 import io.pravega.segmentstore.contracts.ReadResult;
@@ -25,7 +27,8 @@ import io.pravega.shared.NameUtils;
 import java.time.Duration;
 import java.util.AbstractMap;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -101,14 +104,14 @@ public final class IndexRequestProcessor {
                 case Cache: // fallthrough
                 case Storage:
                     firstElement.requestContent(TIMEOUT);
-                    AtomicReference<IndexEntry> entry = new AtomicReference<>();
-                    firstElement.getContent().thenAccept(content -> {
-                        entry.set(IndexEntry.fromBytes(content));
-                    });
-                    if (entry.get() != null) {
-                        return entry.get().getOffset();
-                    } else {
-                        throw new IllegalStateException(String.format("Unable to read data from index segment %s of type %s.", indexSegmentName, firstElement.getType()));
+                    try {
+                        BufferView content = Futures.join(firstElement.getContent(), 10, TimeUnit.SECONDS);
+                        IndexEntry entry = IndexEntry.fromBytes(content);
+                        log.info("###### in locateOffsetForIndexSegment 5 newtonianSearch  segment name {} , entry {} ", indexSegmentName, entry );
+                        return entry.getOffset();
+                    } catch (TimeoutException e) {
+                        log.error("###### in locateOffsetForIndexSegment 6 newtonianSearch  segment name {} TimeOutException () ", indexSegmentName, e);
+                        throw new IllegalStateException(e);
                     }
                 case Truncated:
                     throw new SegmentTruncatedException(String.format("Segment %s has been truncated.", segment));

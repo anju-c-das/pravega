@@ -17,11 +17,13 @@
 package io.pravega.segmentstore.server.host.handler;
 
 import io.netty.buffer.Unpooled;
+import io.pravega.common.Exceptions;
 import io.pravega.common.concurrent.MultiKeyLatestItemSequentialProcessor;
 import io.pravega.segmentstore.contracts.StreamSegmentStore;
 import io.pravega.segmentstore.contracts.AttributeUpdate;
 import io.pravega.segmentstore.contracts.AttributeUpdateType;
 import io.pravega.segmentstore.contracts.AttributeUpdateCollection;
+import io.pravega.segmentstore.contracts.BadAttributeUpdateException;
 import io.pravega.shared.NameUtils;
 import io.pravega.shared.protocol.netty.ByteBufWrapper;
 import java.time.Duration;
@@ -78,7 +80,11 @@ public class IndexAppendProcessor {
 
                 }).thenAccept(v -> log.trace("Index segment append successful for segment {} ", getIndexSegmentName(segmentName)))
                 .exceptionally(ex -> {
-                    log.warn("Index segment append failed for segment {} due to ", getIndexSegmentName(segmentName), ex);
+                    if (Exceptions.unwrap(ex) instanceof BadAttributeUpdateException) {
+                        log.trace("Index segment append failed for segment {} due to ", getIndexSegmentName(segmentName), ex);
+                    } else {
+                        log.warn("Index segment append failed for segment {} due to ", getIndexSegmentName(segmentName), ex);
+                    }
                     return null;
                 });
     }
